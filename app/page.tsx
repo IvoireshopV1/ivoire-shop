@@ -1,0 +1,1381 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/lib/supabase";
+
+type Product = {
+  id: number;
+  name: string;
+  price: number;
+  old_price?: number | null;
+  category?: string | null;
+  image?: string | null;
+  rating?: number | null;
+  reviews?: number | null;
+  stock?: number | null;
+  popular?: boolean | null;
+  description?: string | null;
+  active?: boolean | null;
+};
+
+type CartItem = Product & {
+  quantity: number;
+};
+
+const categories = [
+  "Toutes",
+  "Électronique",
+  "Mode",
+  "Beauté",
+  "Maison",
+  "Accessoires",
+];
+
+const communes = [
+  "Abobo",
+  "Adjamé",
+  "Anyama",
+  "Attécoubé",
+  "Bingerville",
+  "Cocody",
+  "Koumassi",
+  "Marcory",
+  "Plateau",
+  "Port-Bouët",
+  "Songon",
+  "Treichville",
+  "Yopougon",
+  "Autre",
+];
+
+const WHATSAPP_NUMBER = "2250747395798";
+
+const formatPrice = (price: number) =>
+  new Intl.NumberFormat("fr-FR").format(price) + " FCFA";
+
+export default function Home() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("Toutes");
+
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [showCart, setShowCart] = useState(false);
+  const [selectedProduct, setSelectedProduct] =
+    useState<Product | null>(null);
+
+  const [showOrder, setShowOrder] = useState(false);
+  const [sendingOrder, setSendingOrder] = useState(false);
+
+  const [orderSuccess, setOrderSuccess] = useState(false);
+  const [orderNumber, setOrderNumber] = useState("");
+
+  const [customerName, setCustomerName] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [customerCommune, setCustomerCommune] = useState("");
+  const [customerAddress, setCustomerAddress] = useState("");
+  const [customerNote, setCustomerNote] = useState("");
+
+  const [paymentMethod, setPaymentMethod] =
+    useState("delivery");
+
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
+  async function loadProducts() {
+    setLoading(true);
+
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .eq("active", true)
+      .order("id", { ascending: true });
+
+    if (error) {
+      console.error("Erreur produits :", error);
+    } else {
+      setProducts((data || []) as Product[]);
+    }
+
+    setLoading(false);
+  }
+
+  const filteredProducts = useMemo(() => {
+    const text = search.toLowerCase().trim();
+
+    return products.filter((product) => {
+      const matchesSearch =
+        !text ||
+        product.name?.toLowerCase().includes(text) ||
+        product.description?.toLowerCase().includes(text);
+
+      const matchesCategory =
+        category === "Toutes" ||
+        product.category === category;
+
+      return matchesSearch && matchesCategory;
+    });
+  }, [products, search, category]);
+
+  const cartCount = cart.reduce(
+    (total, item) => total + item.quantity,
+    0
+  );
+
+  const cartTotal = cart.reduce(
+    (total, item) => total + item.price * item.quantity,
+    0
+  );
+
+  function addToCart(product: Product) {
+    setCart((current) => {
+      const existing = current.find(
+        (item) => item.id === product.id
+      );
+
+      if (existing) {
+        return current.map((item) =>
+          item.id === product.id
+            ? {
+                ...item,
+                quantity: item.quantity + 1,
+              }
+            : item
+        );
+      }
+
+      return [
+        ...current,
+        {
+          ...product,
+          quantity: 1,
+        },
+      ];
+    });
+  }
+
+  function increaseQuantity(id: number) {
+    setCart((current) =>
+      current.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              quantity: item.quantity + 1,
+            }
+          : item
+      )
+    );
+  }
+
+  function decreaseQuantity(id: number) {
+    setCart((current) =>
+      current
+        .map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                quantity: item.quantity - 1,
+              }
+            : item
+        )
+        .filter((item) => item.quantity > 0)
+    );
+  }
+
+  function removeFromCart(id: number) {
+    setCart((current) =>
+      current.filter((item) => item.id !== id)
+    );
+  }
+
+  function generateOrderNumber() {
+    const random = Math.floor(
+      100000 + Math.random() * 900000
+    );
+
+    return `IVO-${new Date().getFullYear()}-${random}`;
+  }
+
+  function openOrder() {
+    if (cart.length === 0) {
+      alert("Ton panier est vide.");
+      return;
+    }
+
+    setShowCart(false);
+    setShowOrder(true);
+  }
+
+  async function confirmOrder() {
+    if (!customerName.trim()) {
+      alert("Entre ton nom complet.");
+      return;
+    }
+
+    if (paymentMethod === "paystack" && !customerEmail.trim()) {
+      alert("Entre ton adresse email pour le paiement en ligne.");
+      return;
+    }
+
+    if (
+      paymentMethod === "paystack" &&
+      !customerEmail.includes("@")
+    ) {
+      alert("Entre une adresse email valide.");
+      return;
+    }
+
+    if (!customerPhone.trim()) {
+      alert("Entre ton numéro de téléphone.");
+      return;
+    }
+
+    if (!customerCommune) {
+      alert("Choisis ta commune.");
+      return;
+    }
+
+    if (!customerAddress.trim()) {
+      alert("Entre ton adresse de livraison.");
+      return;
+    }
+
+    if (cart.length === 0) {
+      alert("Ton panier est vide.");
+      return;
+    }
+
+    setSendingOrder(true);
+
+    const number = generateOrderNumber();
+
+    const productsForOrder = cart.map((item) => ({
+      id: item.id,
+      name: item.name,
+      price: Number(item.price),
+      quantity: item.quantity,
+    }));
+
+    /*
+     * Pour le paiement en ligne, on crée d'abord la commande
+     * dans Supabase puis on initialise Paystack.
+     *
+     * Cela permet de conserver la commande même si le client
+     * quitte la page de paiement.
+     */
+    const { error: orderError } = await supabase
+      .from("orders")
+      .insert({
+        order_number: number,
+        customer_name: customerName.trim(),
+        customer_phone: customerPhone.trim(),
+        customer_commune: customerCommune,
+        customer_address: customerAddress.trim(),
+        payment_method:
+          paymentMethod === "paystack"
+            ? "Paystack - Paiement en ligne"
+            : "Paiement à la livraison",
+        products: productsForOrder,
+        total: cartTotal,
+        customer_note: customerNote.trim(),
+        status: "Nouvelle",
+      });
+
+    if (orderError) {
+      console.error("Erreur commande :", orderError);
+
+      alert(
+        "Impossible d'enregistrer la commande.\n\n" +
+          orderError.message
+      );
+
+      setSendingOrder(false);
+      return;
+    }
+
+    /*
+     * PAIEMENT À LA LIVRAISON
+     */
+    if (paymentMethod === "delivery") {
+      setOrderNumber(number);
+      setOrderSuccess(true);
+      setCart([]);
+      setSendingOrder(false);
+      return;
+    }
+
+    /*
+     * PAIEMENT PAYSTACK
+     */
+    try {
+      const response = await fetch(
+        "/api/paystack/initialize",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: customerEmail.trim(),
+            amount: cartTotal,
+            orderNumber: number,
+            customerName: customerName.trim(),
+            customerPhone: customerPhone.trim(),
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.authorization_url) {
+        console.error("Erreur Paystack :", data);
+
+        alert(
+          data.error ||
+            "Impossible d'ouvrir le paiement Paystack."
+        );
+
+        setSendingOrder(false);
+        return;
+      }
+
+      /*
+       * Redirection vers la page sécurisée Paystack.
+       */
+      window.location.href = data.authorization_url;
+    } catch (error) {
+      console.error(
+        "Erreur connexion Paystack :",
+        error
+      );
+
+      alert(
+        "Impossible de contacter Paystack.\n\n" +
+          "Vérifie ta connexion internet puis réessaie."
+      );
+
+      setSendingOrder(false);
+    }
+  }
+
+  function closeOrder() {
+    setShowOrder(false);
+    setOrderSuccess(false);
+    setOrderNumber("");
+  }
+
+  function productWhatsApp(product: Product) {
+    const message = encodeURIComponent(
+      `Bonjour Ivoire Shop 👋\n\nJe suis intéressé(e) par le produit : ${product.name}\nPrix : ${formatPrice(
+        Number(product.price)
+      )}\n\nEst-il disponible ?`
+    );
+
+    return `https://wa.me/${WHATSAPP_NUMBER}?text=${message}`;
+  }
+
+  const generalWhatsApp =
+    `https://wa.me/${WHATSAPP_NUMBER}?text=` +
+    encodeURIComponent(
+      "Bonjour Ivoire Shop 👋 Je souhaite avoir des informations sur vos produits."
+    );
+
+  return (
+    <main className="min-h-screen bg-gray-50 text-gray-900">
+
+      {/* HEADER */}
+      <header className="sticky top-0 z-40 bg-black text-white shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+          <div className="flex flex-col md:flex-row items-center gap-4 justify-between">
+
+            <div className="w-full md:w-auto flex items-center justify-between">
+              <a
+                href="/"
+                className="text-2xl md:text-3xl font-black"
+              >
+                🇨🇮 Ivoire Shop
+              </a>
+
+              <button
+                onClick={() => setShowCart(true)}
+                className="md:hidden bg-yellow-400 text-black px-4 py-2 rounded-xl font-bold"
+              >
+                🛒 {cartCount}
+              </button>
+            </div>
+
+            <div className="w-full md:flex-1 md:max-w-xl">
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="🔎 Rechercher un produit..."
+                className="w-full bg-white text-black rounded-xl px-5 py-3 outline-none focus:ring-2 focus:ring-yellow-400"
+              />
+            </div>
+
+            <button
+              onClick={() => setShowCart(true)}
+              className="hidden md:block bg-yellow-400 text-black px-5 py-3 rounded-xl font-bold hover:bg-yellow-300 transition"
+            >
+              🛒 Panier ({cartCount})
+            </button>
+
+          </div>
+        </div>
+      </header>
+
+      {/* HERO */}
+      <section className="bg-black text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16 md:py-24">
+
+          <div className="max-w-3xl">
+
+            <div className="inline-block bg-yellow-400 text-black px-4 py-2 rounded-full font-black text-sm mb-5">
+              🇨🇮 SHOPPING EN CÔTE D'IVOIRE
+            </div>
+
+            <h1 className="text-4xl md:text-6xl font-black leading-tight">
+              Bienvenue sur
+              <br />
+              <span className="text-yellow-400">
+                Ivoire Shop
+              </span>
+            </h1>
+
+            <p className="text-gray-300 text-lg md:text-xl mt-6 leading-relaxed">
+              Découvre nos produits, commande facilement
+              et fais-toi livrer partout en Côte d'Ivoire.
+            </p>
+
+            <div className="mt-8">
+              <button
+                onClick={() =>
+                  document
+                    .getElementById("produits")
+                    ?.scrollIntoView({
+                      behavior: "smooth",
+                    })
+                }
+                className="bg-yellow-400 text-black px-7 py-4 rounded-xl font-black hover:bg-yellow-300 transition"
+              >
+                🛍️ Voir les produits
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* CATEGORIES */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-5">
+        <div className="flex gap-3 overflow-x-auto pb-3 pt-1">
+
+          {categories.map((item) => (
+            <button
+              key={item}
+              onClick={() => setCategory(item)}
+              className={`
+                relative
+                flex-shrink-0
+                whitespace-nowrap
+                px-6
+                py-3.5
+                rounded-2xl
+                font-bold
+                text-sm
+                border
+                transition-all
+                duration-300
+                ease-out
+                ${
+                  category === item
+                    ? "bg-black text-white border-black shadow-lg shadow-black/20 scale-[1.02]"
+                    : "bg-white text-gray-700 border-gray-200 shadow-sm hover:border-gray-400 hover:shadow-md hover:-translate-y-0.5 hover:text-black"
+                }
+              `}
+            >
+
+              <span className="flex items-center gap-2">
+                <span className="text-base">
+                  {item === "Toutes" && "✨"}
+                  {item === "Électronique" && "⚡"}
+                  {item === "Mode" && "👕"}
+                  {item === "Beauté" && "💄"}
+                  {item === "Maison" && "🏠"}
+                  {item === "Accessoires" && "👜"}
+                </span>
+
+                <span>
+                  {item}
+                </span>
+              </span>
+
+              {category === item && (
+                <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-6 h-1 bg-yellow-400 rounded-full" />
+              )}
+
+            </button>
+          ))}
+
+        </div>
+      </section>
+
+      {/* PRODUITS */}
+      <section
+        id="produits"
+        className="max-w-7xl mx-auto px-4 sm:px-6 py-12"
+      >
+
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-7">
+
+          <div>
+            <p className="text-yellow-600 font-black">
+              NOS PRODUITS
+            </p>
+
+            <h2 className="text-3xl md:text-4xl font-black mt-1">
+              Découvre notre sélection
+            </h2>
+          </div>
+
+          <p className="text-gray-500">
+            {filteredProducts.length} produit
+            {filteredProducts.length > 1 ? "s" : ""}
+          </p>
+
+        </div>
+
+        {loading && (
+          <div className="bg-white rounded-3xl p-16 text-center shadow-sm">
+            <div className="text-6xl mb-5">⏳</div>
+
+            <h3 className="text-xl font-black">
+              Chargement des produits...
+            </h3>
+
+            <p className="text-gray-500 mt-2">
+              Connexion à Ivoire Shop
+            </p>
+          </div>
+        )}
+
+        {!loading && filteredProducts.length === 0 && (
+          <div className="bg-white rounded-3xl p-16 text-center shadow-sm">
+
+            <div className="text-6xl">🔎</div>
+
+            <h3 className="text-2xl font-black mt-5">
+              Aucun produit trouvé
+            </h3>
+
+            <p className="text-gray-500 mt-2">
+              Essaie une autre recherche ou une autre catégorie.
+            </p>
+
+          </div>
+        )}
+
+        {!loading && filteredProducts.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+
+            {filteredProducts.map((product) => (
+              <div
+                key={product.id}
+                className="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition"
+              >
+
+                <button
+                  onClick={() =>
+                    setSelectedProduct(product)
+                  }
+                  className="w-full text-left"
+                >
+
+                  <div className="relative h-64 bg-gray-100 overflow-hidden">
+
+                    {product.image ? (
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        className="w-full h-full object-cover hover:scale-105 transition duration-500"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-7xl">
+                        🛍️
+                      </div>
+                    )}
+
+                    {product.popular && (
+                      <span className="absolute top-4 left-4 bg-yellow-400 text-black px-3 py-1.5 rounded-full text-xs font-black">
+                        ⭐ POPULAIRE
+                      </span>
+                    )}
+
+                  </div>
+
+                  <div className="p-5">
+
+                    <p className="text-xs text-gray-500 font-bold uppercase">
+                      {product.category || "Produit"}
+                    </p>
+
+                    <h3 className="text-xl font-black mt-1">
+                      {product.name}
+                    </h3>
+
+                    {product.description && (
+                      <p className="text-gray-500 text-sm mt-2 line-clamp-2">
+                        {product.description}
+                      </p>
+                    )}
+
+                    <div className="flex flex-wrap items-end gap-3 mt-4">
+
+                      <span className="text-2xl font-black">
+                        {formatPrice(Number(product.price))}
+                      </span>
+
+                      {product.old_price &&
+                        Number(product.old_price) >
+                          Number(product.price) && (
+                          <span className="text-sm text-gray-400 line-through mb-1">
+                            {formatPrice(
+                              Number(product.old_price)
+                            )}
+                          </span>
+                        )}
+
+                    </div>
+
+                    {product.rating !== null &&
+                      product.rating !== undefined && (
+                        <p className="text-sm mt-3">
+                          ⭐ {product.rating}
+                          {product.reviews
+                            ? ` (${product.reviews} avis)`
+                            : ""}
+                        </p>
+                      )}
+
+                  </div>
+
+                </button>
+
+                <div className="px-5 pb-5 space-y-2">
+
+                  <button
+                    onClick={() => addToCart(product)}
+                    className="w-full bg-black text-white py-3.5 rounded-xl font-black hover:bg-gray-800 transition"
+                  >
+                    🛒 Ajouter au panier
+                  </button>
+
+                  <a
+                    href={productWhatsApp(product)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full bg-green-100 text-green-700 py-3 rounded-xl text-center font-bold hover:bg-green-200 transition"
+                  >
+                    💬 Commander sur WhatsApp
+                  </a>
+
+                </div>
+
+              </div>
+            ))}
+
+          </div>
+        )}
+
+      </section>
+
+      {/* AVANTAGES */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+          <div className="bg-white rounded-2xl p-5 shadow-sm">
+            <div className="text-3xl">🚚</div>
+
+            <h3 className="font-black mt-3">
+              Livraison
+            </h3>
+
+            <p className="text-gray-500 text-sm mt-1">
+              Livraison dans plusieurs communes d'Abidjan.
+            </p>
+          </div>
+
+          <div className="bg-white rounded-2xl p-5 shadow-sm">
+            <div className="text-3xl">🔒</div>
+
+            <h3 className="font-black mt-3">
+              Commande simple
+            </h3>
+
+            <p className="text-gray-500 text-sm mt-1">
+              Commande rapidement depuis ton téléphone ou PC.
+            </p>
+          </div>
+
+          <div className="bg-white rounded-2xl p-5 shadow-sm">
+            <div className="text-3xl">💬</div>
+
+            <h3 className="font-black mt-3">
+              Assistance WhatsApp
+            </h3>
+
+            <p className="text-gray-500 text-sm mt-1">
+              Une question ? Contacte directement notre équipe.
+            </p>
+          </div>
+
+        </div>
+      </section>
+
+      {/* WHATSAPP */}
+      <section className="bg-green-600 text-white">
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
+
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+
+            <div>
+              <p className="text-3xl font-black">
+                Une question ?
+              </p>
+
+              <p className="text-green-100 mt-2">
+                Notre équipe est disponible sur WhatsApp.
+              </p>
+            </div>
+
+            <a
+              href={generalWhatsApp}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-white text-green-700 px-8 py-4 rounded-xl font-black hover:bg-green-50 transition"
+            >
+              💬 Écrire sur WhatsApp
+            </a>
+
+          </div>
+
+        </div>
+
+      </section>
+
+      {/* FOOTER */}
+      <footer className="bg-black text-white">
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+
+          <div className="grid md:grid-cols-3 gap-8">
+
+            <div>
+              <h2 className="text-2xl font-black">
+                🇨🇮 Ivoire Shop
+              </h2>
+
+              <p className="text-gray-400 mt-2">
+                Ton shopping en ligne en Côte d'Ivoire.
+              </p>
+            </div>
+
+            <div>
+              <h3 className="font-bold">
+                Catégories
+              </h3>
+
+              <div className="text-gray-400 text-sm mt-3 space-y-1">
+                <p>Électronique</p>
+                <p>Mode</p>
+                <p>Beauté</p>
+                <p>Maison</p>
+                <p>Accessoires</p>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="font-bold">
+                Contact
+              </h3>
+
+              <a
+                href={generalWhatsApp}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-green-400 hover:text-green-300 block mt-3"
+              >
+                💬 WhatsApp
+              </a>
+            </div>
+
+          </div>
+
+          <div className="border-t border-gray-800 mt-8 pt-6 text-sm text-gray-500">
+            © {new Date().getFullYear()} Ivoire Shop. Tous droits réservés.
+          </div>
+
+        </div>
+
+      </footer>
+
+      {/* WHATSAPP FLOTTANT */}
+      <a
+        href={generalWhatsApp}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Contacter Ivoire Shop sur WhatsApp"
+        className="fixed bottom-5 right-5 z-40 w-16 h-16 rounded-full bg-green-500 text-white flex items-center justify-center text-3xl shadow-2xl hover:bg-green-600 hover:scale-110 transition"
+      >
+        💬
+      </a>
+
+      {/* MODAL PRODUIT */}
+      {selectedProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+
+          <div
+            className="absolute inset-0 bg-black/70"
+            onClick={() => setSelectedProduct(null)}
+          />
+
+          <div className="relative bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+
+            <button
+              onClick={() => setSelectedProduct(null)}
+              className="absolute right-4 top-4 z-10 w-10 h-10 rounded-full bg-white shadow font-bold"
+            >
+              ✕
+            </button>
+
+            {selectedProduct.image ? (
+              <img
+                src={selectedProduct.image}
+                alt={selectedProduct.name}
+                className="w-full h-72 object-cover"
+              />
+            ) : (
+              <div className="w-full h-72 bg-gray-100 flex items-center justify-center text-8xl">
+                🛍️
+              </div>
+            )}
+
+            <div className="p-7">
+
+              <p className="text-sm text-gray-500">
+                {selectedProduct.category}
+              </p>
+
+              <h2 className="text-3xl font-black mt-1">
+                {selectedProduct.name}
+              </h2>
+
+              <p className="text-3xl font-black mt-5">
+                {formatPrice(
+                  Number(selectedProduct.price)
+                )}
+              </p>
+
+              {selectedProduct.description && (
+                <p className="text-gray-600 leading-relaxed mt-5">
+                  {selectedProduct.description}
+                </p>
+              )}
+
+              <div className="grid sm:grid-cols-2 gap-3 mt-7">
+
+                <button
+                  onClick={() => {
+                    addToCart(selectedProduct);
+                    setSelectedProduct(null);
+                    setShowCart(true);
+                  }}
+                  className="bg-black text-white py-4 rounded-xl font-black"
+                >
+                  🛒 Ajouter au panier
+                </button>
+
+                <a
+                  href={productWhatsApp(selectedProduct)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-green-600 text-white py-4 rounded-xl font-black text-center"
+                >
+                  💬 WhatsApp
+                </a>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+      )}
+
+      {/* PANIER */}
+      {showCart && (
+        <div className="fixed inset-0 z-50">
+
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setShowCart(false)}
+          />
+
+          <div className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl flex flex-col">
+
+            <div className="p-5 border-b flex items-center justify-between">
+
+              <div>
+                <h2 className="text-2xl font-black">
+                  🛒 Mon panier
+                </h2>
+
+                <p className="text-gray-500 text-sm">
+                  {cartCount} article
+                  {cartCount > 1 ? "s" : ""}
+                </p>
+              </div>
+
+              <button
+                onClick={() => setShowCart(false)}
+                className="w-10 h-10 rounded-full bg-gray-100 font-bold"
+              >
+                ✕
+              </button>
+
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5">
+
+              {cart.length === 0 ? (
+                <div className="text-center py-16">
+
+                  <div className="text-6xl">
+                    🛒
+                  </div>
+
+                  <h3 className="text-xl font-black mt-5">
+                    Ton panier est vide
+                  </h3>
+
+                  <p className="text-gray-500 mt-2">
+                    Ajoute des produits pour commencer.
+                  </p>
+
+                </div>
+              ) : (
+                <div className="space-y-4">
+
+                  {cart.map((item) => (
+                    <div
+                      key={item.id}
+                      className="border rounded-2xl p-4"
+                    >
+
+                      <div className="flex gap-4">
+
+                        <div className="w-20 h-20 rounded-xl bg-gray-100 overflow-hidden flex-shrink-0">
+
+                          {item.image ? (
+                            <img
+                              src={item.image}
+                              alt={item.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-3xl">
+                              🛍️
+                            </div>
+                          )}
+
+                        </div>
+
+                        <div className="flex-1">
+
+                          <p className="font-black">
+                            {item.name}
+                          </p>
+
+                          <p className="font-bold mt-1">
+                            {formatPrice(item.price)}
+                          </p>
+
+                          <div className="flex items-center gap-2 mt-3">
+
+                            <button
+                              onClick={() =>
+                                decreaseQuantity(item.id)
+                              }
+                              className="w-8 h-8 rounded-lg bg-gray-100 font-bold"
+                            >
+                              −
+                            </button>
+
+                            <span className="w-8 text-center font-bold">
+                              {item.quantity}
+                            </span>
+
+                            <button
+                              onClick={() =>
+                                increaseQuantity(item.id)
+                              }
+                              className="w-8 h-8 rounded-lg bg-gray-100 font-bold"
+                            >
+                              +
+                            </button>
+
+                            <button
+                              onClick={() =>
+                                removeFromCart(item.id)
+                              }
+                              className="ml-auto text-red-600 text-sm font-bold"
+                            >
+                              Supprimer
+                            </button>
+
+                          </div>
+
+                        </div>
+
+                      </div>
+
+                    </div>
+                  ))}
+
+                </div>
+              )}
+
+            </div>
+
+            {cart.length > 0 && (
+              <div className="border-t p-5">
+
+                <div className="flex justify-between text-xl font-black mb-4">
+                  <span>Total</span>
+                  <span>{formatPrice(cartTotal)}</span>
+                </div>
+
+                <button
+                  onClick={openOrder}
+                  className="w-full bg-yellow-400 text-black py-4 rounded-xl font-black hover:bg-yellow-300 transition"
+                >
+                  📦 Passer la commande
+                </button>
+
+              </div>
+            )}
+
+          </div>
+
+        </div>
+      )}
+
+      {/* MODAL COMMANDE */}
+      {showOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+
+          <div
+            className="absolute inset-0 bg-black/70"
+            onClick={closeOrder}
+          />
+
+          <div className="relative bg-white rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-y-auto">
+
+            <div className="sticky top-0 bg-white border-b p-5 flex justify-between items-center">
+
+              <div>
+                <p className="text-sm text-gray-500">
+                  Ivoire Shop
+                </p>
+
+                <h2 className="text-2xl font-black">
+                  Finaliser ma commande
+                </h2>
+              </div>
+
+              <button
+                onClick={closeOrder}
+                className="w-10 h-10 rounded-full bg-gray-100 font-bold"
+              >
+                ✕
+              </button>
+
+            </div>
+
+            {!orderSuccess ? (
+              <div className="p-6">
+
+                <div className="bg-gray-100 rounded-2xl p-5 mb-6">
+
+                  <div className="flex justify-between">
+
+                    <span className="font-bold">
+                      Total de la commande
+                    </span>
+
+                    <span className="text-xl font-black">
+                      {formatPrice(cartTotal)}
+                    </span>
+
+                  </div>
+
+                </div>
+
+                <div className="space-y-5">
+
+                  <div>
+                    <label className="block font-bold mb-2">
+                      Nom complet
+                    </label>
+
+                    <input
+                      value={customerName}
+                      onChange={(e) =>
+                        setCustomerName(e.target.value)
+                      }
+                      placeholder="Ex : Said Silue"
+                      className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-black"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold mb-2">
+                      Adresse email
+                    </label>
+
+                    <input
+                      value={customerEmail}
+                      onChange={(e) =>
+                        setCustomerEmail(e.target.value)
+                      }
+                      type="email"
+                      placeholder="Ex : exemple@gmail.com"
+                      className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-black"
+                    />
+
+                    <p className="text-xs text-gray-500 mt-2">
+                      Obligatoire pour le paiement en ligne.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold mb-2">
+                      Numéro de téléphone
+                    </label>
+
+                    <input
+                      value={customerPhone}
+                      onChange={(e) =>
+                        setCustomerPhone(e.target.value)
+                      }
+                      type="tel"
+                      placeholder="Ex : 0700000000"
+                      className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-black"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold mb-2">
+                      Commune
+                    </label>
+
+                    <select
+                      value={customerCommune}
+                      onChange={(e) =>
+                        setCustomerCommune(e.target.value)
+                      }
+                      className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 bg-white outline-none focus:border-black"
+                    >
+                      <option value="">
+                        Choisir une commune
+                      </option>
+
+                      {communes.map((commune) => (
+                        <option
+                          key={commune}
+                          value={commune}
+                        >
+                          {commune}
+                        </option>
+                      ))}
+
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold mb-2">
+                      Adresse de livraison
+                    </label>
+
+                    <textarea
+                      value={customerAddress}
+                      onChange={(e) =>
+                        setCustomerAddress(e.target.value)
+                      }
+                      rows={3}
+                      placeholder="Quartier, rue, repère..."
+                      className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-black resize-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold mb-2">
+                      Mode de paiement
+                    </label>
+
+                    <div className="grid sm:grid-cols-2 gap-3">
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPaymentMethod("delivery")
+                        }
+                        className={`p-4 rounded-xl border-2 text-left ${
+                          paymentMethod === "delivery"
+                            ? "border-black bg-gray-100"
+                            : "border-gray-200"
+                        }`}
+                      >
+                        <p className="font-black">
+                          💵 Paiement à la livraison
+                        </p>
+
+                        <p className="text-sm text-gray-500 mt-1">
+                          Paie à la réception.
+                        </p>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPaymentMethod("paystack")
+                        }
+                        className={`p-4 rounded-xl border-2 text-left ${
+                          paymentMethod === "paystack"
+                            ? "border-black bg-gray-100"
+                            : "border-gray-200"
+                        }`}
+                      >
+                        <p className="font-black">
+                          📱 Paiement en ligne
+                        </p>
+
+                        <p className="text-sm text-gray-500 mt-1">
+                          Wave, Orange Money, MTN...
+                        </p>
+                      </button>
+
+                    </div>
+                  </div>
+
+                  {paymentMethod === "paystack" && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4">
+                      <p className="font-black">
+                        🔒 Paiement sécurisé
+                      </p>
+
+                      <p className="text-sm text-gray-600 mt-1">
+                        Tu seras redirigé vers Paystack pour
+                        effectuer ton paiement.
+                      </p>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block font-bold mb-2">
+                      Note pour la livraison
+                    </label>
+
+                    <textarea
+                      value={customerNote}
+                      onChange={(e) =>
+                        setCustomerNote(e.target.value)
+                      }
+                      rows={3}
+                      placeholder="Une précision pour le livreur ?"
+                      className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-black resize-none"
+                    />
+                  </div>
+
+                </div>
+
+                <button
+                  onClick={confirmOrder}
+                  disabled={sendingOrder}
+                  className="w-full bg-black text-white py-4 rounded-xl font-black mt-7 disabled:opacity-50"
+                >
+                  {sendingOrder
+                    ? paymentMethod === "paystack"
+                      ? "⏳ Ouverture du paiement..."
+                      : "⏳ Enregistrement..."
+                    : paymentMethod === "paystack"
+                    ? "💳 Payer avec Paystack"
+                    : "✅ Confirmer ma commande"}
+                </button>
+
+              </div>
+            ) : (
+              <div className="p-8 text-center">
+
+                <div className="text-7xl">
+                  🎉
+                </div>
+
+                <h2 className="text-3xl font-black mt-5">
+                  Commande confirmée !
+                </h2>
+
+                <p className="text-gray-500 mt-3">
+                  Merci pour ta commande chez Ivoire Shop.
+                </p>
+
+                <div className="bg-gray-100 rounded-2xl p-5 mt-6">
+
+                  <p className="text-sm text-gray-500">
+                    Numéro de commande
+                  </p>
+
+                  <p className="text-2xl font-black mt-1">
+                    {orderNumber}
+                  </p>
+
+                </div>
+
+                <a
+                  href={
+                    `https://wa.me/${WHATSAPP_NUMBER}?text=` +
+                    encodeURIComponent(
+                      `Bonjour Ivoire Shop 👋 Je viens de passer la commande ${orderNumber}.`
+                    )
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block bg-green-600 text-white py-4 rounded-xl font-black mt-5"
+                >
+                  💬 Envoyer ma commande sur WhatsApp
+                </a>
+
+                <button
+                  onClick={closeOrder}
+                  className="w-full bg-black text-white py-4 rounded-xl font-black mt-3"
+                >
+                  Retour à la boutique
+                </button>
+
+              </div>
+            )}
+
+          </div>
+
+        </div>
+      )}
+
+    </main>
+  );
+}
