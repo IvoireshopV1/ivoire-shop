@@ -64,6 +64,16 @@ export default function SellerPage() {
     useState("");
 
   // =====================================================
+  // RAPPEL OFFRES APRÈS 3 JOURS
+  // =====================================================
+
+  const [sellerCreatedAt, setSellerCreatedAt] =
+    useState<string | null>(null);
+
+  const [showUpgradeReminder, setShowUpgradeReminder] =
+    useState(false);
+
+  // =====================================================
   // FORMULAIRE PRODUIT
   // =====================================================
 
@@ -160,6 +170,41 @@ export default function SellerPage() {
   };
 
   // =====================================================
+  // VÉRIFICATION RAPPEL APRÈS 3 JOURS
+  // =====================================================
+
+  const checkUpgradeReminder = (
+    createdAt: string,
+    currentSubscription: Subscription | null
+  ) => {
+    // Si le vendeur possède déjà un abonnement,
+    // aucun rappel ne doit apparaître.
+    if (currentSubscription) {
+      setShowUpgradeReminder(false);
+      return;
+    }
+
+    const createdDate =
+      new Date(createdAt);
+
+    const now = new Date();
+
+    const difference =
+      now.getTime() -
+      createdDate.getTime();
+
+    const threeDays =
+      3 * 24 * 60 * 60 * 1000;
+
+    // Le rappel apparaît après 3 jours.
+    if (difference >= threeDays) {
+      setShowUpgradeReminder(true);
+    } else {
+      setShowUpgradeReminder(false);
+    }
+  };
+
+  // =====================================================
   // VÉRIFICATION ACCÈS VENDEUR
   // =====================================================
 
@@ -186,7 +231,7 @@ export default function SellerPage() {
       } = await supabase
         .from("profiles")
         .select(
-          "role, business_name"
+          "role, business_name, created_at"
         )
         .eq(
           "id",
@@ -208,6 +253,10 @@ export default function SellerPage() {
           "Ma boutique"
       );
 
+      setSellerCreatedAt(
+        profile.created_at || null
+      );
+
       await loadProducts(
         authData.user.id
       );
@@ -221,6 +270,26 @@ export default function SellerPage() {
 
     checkAccess();
   }, [router]);
+
+  // =====================================================
+  // RAPPEL APRÈS CHARGEMENT
+  // =====================================================
+
+  useEffect(() => {
+    if (
+      sellerCreatedAt &&
+      !subscriptionChecking
+    ) {
+      checkUpgradeReminder(
+        sellerCreatedAt,
+        subscription
+      );
+    }
+  }, [
+    sellerCreatedAt,
+    subscription,
+    subscriptionChecking,
+  ]);
 
   // =====================================================
   // DÉCONNEXION
@@ -909,6 +978,105 @@ export default function SellerPage() {
           {/* CONTENU */}
 
           <div className="p-5 sm:p-8 max-w-7xl mx-auto">
+
+            {/* =================================================
+                RAPPEL OFFRES APRÈS 3 JOURS
+            ================================================= */}
+
+            {showUpgradeReminder &&
+              !subscription &&
+              activeMenu ===
+                "Dashboard" && (
+                <div className="mb-8 relative overflow-hidden rounded-3xl bg-gradient-to-r from-purple-700 via-indigo-700 to-blue-700 text-white shadow-2xl">
+
+                  <div className="absolute -top-16 -right-16 w-48 h-48 bg-yellow-400/20 rounded-full blur-2xl" />
+
+                  <div className="absolute -bottom-20 -left-10 w-52 h-52 bg-pink-500/20 rounded-full blur-3xl" />
+
+                  <div className="relative p-6 sm:p-8">
+
+                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+
+                      <div className="flex items-start gap-4">
+
+                        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-yellow-400 text-black flex items-center justify-center text-3xl shadow-lg flex-shrink-0">
+                          🚀
+                        </div>
+
+                        <div>
+
+                          <div className="inline-flex items-center gap-2 bg-white/15 px-3 py-1.5 rounded-full text-xs font-black mb-3">
+                            ✨ VOTRE BOUTIQUE PEUT ALLER PLUS LOIN
+                          </div>
+
+                          <h2 className="text-2xl sm:text-3xl font-black">
+                            Passez à une offre supérieure
+                          </h2>
+
+                          <p className="text-purple-100 mt-2 max-w-2xl text-sm sm:text-base leading-relaxed">
+                            Votre boutique est actuellement
+                            en formule gratuite. Développez
+                            vos ventes avec plus de visibilité,
+                            de statistiques et de fonctionnalités
+                            professionnelles.
+                          </p>
+
+                          <div className="flex flex-wrap gap-3 mt-4">
+
+                            <span className="bg-white/10 px-3 py-2 rounded-xl text-xs font-bold">
+                              📈 Plus de visibilité
+                            </span>
+
+                            <span className="bg-white/10 px-3 py-2 rounded-xl text-xs font-bold">
+                              📊 Statistiques avancées
+                            </span>
+
+                            <span className="bg-white/10 px-3 py-2 rounded-xl text-xs font-bold">
+                              ⭐ Mise en avant
+                            </span>
+
+                          </div>
+
+                        </div>
+
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row lg:flex-col gap-3 min-w-[210px]">
+
+                        <button
+                          onClick={() => {
+                            setShowUpgradeReminder(
+                              false
+                            );
+
+                            setActiveMenu(
+                              "Mon abonnement"
+                            );
+                          }}
+                          className="bg-yellow-400 text-black px-6 py-3.5 rounded-xl font-black hover:bg-yellow-300 transition shadow-lg"
+                        >
+                          💎 Voir les offres
+                        </button>
+
+                        <button
+                          onClick={() =>
+                            setShowUpgradeReminder(
+                              false
+                            )
+                          }
+                          className="bg-white/10 border border-white/20 text-white px-6 py-3 rounded-xl font-bold hover:bg-white/20 transition"
+                        >
+                          Plus tard
+                        </button>
+
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                </div>
+              )}
 
             {/* =================================================
                 DASHBOARD
@@ -2222,10 +2390,13 @@ export default function SellerPage() {
                     </h3>
 
                     <p className="text-3xl font-black mt-2">
+
                       3 000{" "}
+
                       <span className="text-sm text-gray-400">
                         FCFA / mois
                       </span>
+
                     </p>
 
                     <ul className="space-y-3 mt-6">
@@ -2307,10 +2478,13 @@ export default function SellerPage() {
                     </h3>
 
                     <p className="text-3xl font-black mt-2">
+
                       5 000{" "}
+
                       <span className="text-sm text-gray-400">
                         FCFA / mois
                       </span>
+
                     </p>
 
                     <ul className="space-y-3 mt-6">

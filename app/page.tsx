@@ -360,10 +360,6 @@ export default function Home() {
       return;
     }
 
-    /* =========================================================
-       ENREGISTREMENT DE LA COMMANDE
-    ========================================================= */
-
     const { error: orderError } = await supabase
       .from("orders")
       .insert({
@@ -398,10 +394,6 @@ export default function Home() {
       return;
     }
 
-    /* =========================================================
-       COMMISSION IVOIRE SHOP — 10 %
-    ========================================================= */
-
     try {
       const commissionResponse = await fetch(
         "/api/commissions/create",
@@ -413,10 +405,7 @@ export default function Home() {
           body: JSON.stringify({
             order_number: number,
             products: cart,
-            payment_status:
-              paymentMethod === "paystack"
-                ? "pending"
-                : "pending",
+            payment_status: "pending",
           }),
         }
       );
@@ -429,12 +418,6 @@ export default function Home() {
           "Erreur lors de l'enregistrement de la commission :",
           commissionData
         );
-
-        /*
-         * La commande existe déjà.
-         * On ne bloque pas la commande si le calcul
-         * comptable échoue temporairement.
-         */
       } else {
         console.log(
           "✅ Commission de 10 % enregistrée :",
@@ -448,10 +431,6 @@ export default function Home() {
       );
     }
 
-    /* =========================================================
-       PAIEMENT À LA LIVRAISON
-    ========================================================= */
-
     if (paymentMethod === "delivery") {
       setOrderNumber(number);
       setOrderSuccess(true);
@@ -462,10 +441,6 @@ export default function Home() {
 
       return;
     }
-
-    /* =========================================================
-       PAIEMENT PAYSTACK
-    ========================================================= */
 
     try {
       const response = await fetch(
@@ -542,81 +517,318 @@ export default function Home() {
     );
 
   return (
-    <main className="min-h-screen bg-gray-50 text-gray-900">
+    <main className="min-h-screen bg-[#f8f7f3] text-gray-900">
 
       {/* =========================================================
-          HEADER
+          NOUVEL EN-TÊTE PROFESSIONNEL
       ========================================================= */}
-      <header className="sticky top-0 z-40 bg-black text-white shadow-xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
 
-          <div className="flex flex-col md:flex-row items-center gap-4 justify-between">
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-gray-200 shadow-sm">
+
+        {/* BARRE PRINCIPALE */}
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+          <div className="min-h-[76px] flex items-center gap-4">
 
             {/* LOGO */}
-            <div className="w-full md:w-auto flex items-center justify-between">
 
-              <a
-                href="/"
-                className="text-2xl md:text-3xl font-black hover:text-yellow-400 transition"
+            <a
+              href="/"
+              className="
+                flex
+                items-center
+                gap-2
+                flex-shrink-0
+                group
+              "
+            >
+
+              <div
+                className="
+                  w-11
+                  h-11
+                  rounded-2xl
+                  bg-black
+                  text-yellow-400
+                  flex
+                  items-center
+                  justify-center
+                  text-xl
+                  shadow-lg
+                  group-hover:rotate-3
+                  transition
+                "
               >
-                🇨🇮 Ivoire Shop
-              </a>
+                🇨🇮
+              </div>
 
-              {/* ACTIONS MOBILE */}
-              <div className="flex items-center gap-2 md:hidden">
+              <div className="hidden sm:block">
 
-                <a
-                  href="/suivi"
+                <div className="text-xl font-black tracking-tight leading-none">
+                  Ivoire<span className="text-yellow-500">Shop</span>
+                </div>
+
+                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.18em] mt-1">
+                  Marketplace ivoirienne
+                </div>
+
+              </div>
+
+            </a>
+
+            {/* RECHERCHE DESKTOP */}
+
+            <div className="hidden md:block flex-1 max-w-2xl mx-auto">
+
+              <div className="relative">
+
+                <span
                   className="
-                    flex
-                    items-center
-                    gap-2
-                    bg-yellow-400
-                    text-black
-                    px-4
-                    py-3
-                    rounded-xl
-                    font-black
+                    absolute
+                    left-4
+                    top-1/2
+                    -translate-y-1/2
+                    text-gray-400
+                    text-lg
+                  "
+                >
+                  🔎
+                </span>
+
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) =>
+                    setSearch(e.target.value)
+                  }
+                  placeholder="Rechercher un produit, une catégorie..."
+                  className="
+                    w-full
+                    h-12
+                    bg-gray-100
+                    border
+                    border-transparent
+                    rounded-2xl
+                    pl-12
+                    pr-5
                     text-sm
-                    shadow-lg
-                    shadow-yellow-400/20
-                    hover:bg-yellow-300
-                    hover:scale-105
-                    transition-all
-                  "
-                >
-                  <span className="text-lg">
-                    📦
-                  </span>
-
-                  <span>
-                    Suivre
-                  </span>
-                </a>
-
-                <button
-                  onClick={() => setShowCart(true)}
-                  className="
-                    bg-white
-                    text-black
-                    px-4
-                    py-3
-                    rounded-xl
-                    font-black
-                    shadow-lg
-                    hover:bg-gray-100
+                    font-medium
+                    text-gray-900
+                    outline-none
                     transition
+                    focus:bg-white
+                    focus:border-yellow-400
+                    focus:ring-4
+                    focus:ring-yellow-400/10
                   "
-                >
-                  🛒 {cartCount}
-                </button>
+                />
 
               </div>
 
             </div>
 
-            {/* RECHERCHE */}
-            <div className="w-full md:flex-1 md:max-w-xl">
+            {/* ACTIONS DESKTOP */}
+
+            <div className="hidden lg:flex items-center gap-2 flex-shrink-0">
+
+              <a
+                href="/become-seller"
+                className="
+                  flex
+                  items-center
+                  gap-2
+                  px-4
+                  py-2.5
+                  rounded-xl
+                  text-sm
+                  font-black
+                  text-gray-700
+                  hover:bg-yellow-50
+                  hover:text-black
+                  transition
+                "
+              >
+                <span className="text-lg">
+                  🏪
+                </span>
+
+                <span>
+                  Vendre
+                </span>
+              </a>
+
+              <a
+                href="/suivi"
+                className="
+                  flex
+                  items-center
+                  gap-2
+                  px-4
+                  py-2.5
+                  rounded-xl
+                  text-sm
+                  font-black
+                  text-gray-700
+                  hover:bg-gray-100
+                  transition
+                "
+              >
+                <span className="text-lg">
+                  📦
+                </span>
+
+                <span>
+                  Suivi
+                </span>
+              </a>
+
+              <button
+                onClick={() => setShowCart(true)}
+                className="
+                  relative
+                  flex
+                  items-center
+                  gap-2
+                  bg-black
+                  text-white
+                  px-5
+                  py-3
+                  rounded-xl
+                  font-black
+                  text-sm
+                  shadow-lg
+                  hover:bg-gray-800
+                  hover:-translate-y-0.5
+                  transition
+                "
+              >
+                <span className="text-lg">
+                  🛒
+                </span>
+
+                <span>
+                  Panier
+                </span>
+
+                {cartCount > 0 && (
+                  <span
+                    className="
+                      absolute
+                      -top-2
+                      -right-2
+                      min-w-6
+                      h-6
+                      px-1.5
+                      rounded-full
+                      bg-yellow-400
+                      text-black
+                      text-xs
+                      font-black
+                      flex
+                      items-center
+                      justify-center
+                      border-2
+                      border-white
+                    "
+                  >
+                    {cartCount}
+                  </span>
+                )}
+
+              </button>
+
+            </div>
+
+            {/* ACTIONS MOBILE */}
+
+            <div className="ml-auto flex md:hidden items-center gap-2">
+
+              <a
+                href="/suivi"
+                aria-label="Suivre ma commande"
+                className="
+                  w-11
+                  h-11
+                  rounded-xl
+                  bg-gray-100
+                  flex
+                  items-center
+                  justify-center
+                  text-lg
+                  hover:bg-yellow-400
+                  transition
+                "
+              >
+                📦
+              </a>
+
+              <button
+                onClick={() => setShowCart(true)}
+                aria-label="Ouvrir le panier"
+                className="
+                  relative
+                  w-11
+                  h-11
+                  rounded-xl
+                  bg-black
+                  text-white
+                  flex
+                  items-center
+                  justify-center
+                  text-lg
+                "
+              >
+                🛒
+
+                {cartCount > 0 && (
+                  <span
+                    className="
+                      absolute
+                      -top-2
+                      -right-2
+                      min-w-5
+                      h-5
+                      px-1
+                      rounded-full
+                      bg-yellow-400
+                      text-black
+                      text-[10px]
+                      font-black
+                      flex
+                      items-center
+                      justify-center
+                      border-2
+                      border-white
+                    "
+                  >
+                    {cartCount}
+                  </span>
+                )}
+
+              </button>
+
+            </div>
+
+          </div>
+
+          {/* RECHERCHE MOBILE */}
+
+          <div className="md:hidden pb-4">
+
+            <div className="relative">
+
+              <span
+                className="
+                  absolute
+                  left-4
+                  top-1/2
+                  -translate-y-1/2
+                  text-gray-400
+                "
+              >
+                🔎
+              </span>
 
               <input
                 type="text"
@@ -624,106 +836,182 @@ export default function Home() {
                 onChange={(e) =>
                   setSearch(e.target.value)
                 }
-                placeholder="🔎 Rechercher un produit..."
+                placeholder="Rechercher un produit..."
                 className="
                   w-full
-                  bg-white
-                  text-black
+                  h-11
+                  bg-gray-100
+                  border
+                  border-gray-200
                   rounded-xl
-                  px-5
-                  py-3
+                  pl-11
+                  pr-4
+                  text-sm
                   outline-none
-                  focus:ring-2
-                  focus:ring-yellow-400
+                  focus:bg-white
+                  focus:border-yellow-400
+                  focus:ring-4
+                  focus:ring-yellow-400/10
+                  transition
                 "
               />
 
             </div>
 
-            {/* ACTIONS DESKTOP */}
-            <div className="hidden md:flex items-center gap-3">
+          </div>
+
+        </div>
+
+        {/* NAVIGATION MOBILE / TABLET */}
+
+        <div className="border-t border-gray-100">
+
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+            <div className="flex items-center gap-2 overflow-x-auto py-2.5 scrollbar-hide">
 
               <a
-                href="/suivi"
+                href="/become-seller"
                 className="
-                  group
+                  lg:hidden
                   flex
                   items-center
-                  gap-2
+                  gap-1.5
+                  flex-shrink-0
+                  px-3.5
+                  py-2
+                  rounded-lg
                   bg-yellow-400
                   text-black
-                  px-6
-                  py-3
-                  rounded-xl
+                  text-xs
                   font-black
-                  shadow-lg
-                  shadow-yellow-400/20
-                  hover:bg-yellow-300
-                  hover:scale-105
-                  transition-all
                 "
               >
-                <span className="text-xl group-hover:animate-bounce">
-                  📦
-                </span>
-
-                <span>
-                  Suivre ma commande
-                </span>
+                🏪 Vendre
               </a>
 
-              <button
-                onClick={() => setShowCart(true)}
-                className="
-                  bg-white
-                  text-black
-                  px-5
-                  py-3
-                  rounded-xl
-                  font-black
-                  hover:bg-gray-100
-                  hover:scale-105
-                  transition
-                "
-              >
-                🛒 Panier ({cartCount})
-              </button>
+              <span className="lg:hidden text-gray-300">
+                |
+              </span>
+
+              {categories.map((item) => (
+                <button
+                  key={item}
+                  onClick={() => setCategory(item)}
+                  className={`
+                    flex
+                    items-center
+                    gap-1.5
+                    flex-shrink-0
+                    whitespace-nowrap
+                    px-3.5
+                    py-2
+                    rounded-lg
+                    text-xs
+                    font-bold
+                    transition
+                    ${
+                      category === item
+                        ? "bg-black text-white"
+                        : "text-gray-600 hover:bg-gray-100"
+                    }
+                  `}
+                >
+
+                  <span>
+                    {item === "Toutes" && "✨"}
+                    {item === "Électronique" && "⚡"}
+                    {item === "Mode" && "👕"}
+                    {item === "Beauté" && "💄"}
+                    {item === "Maison" && "🏠"}
+                    {item === "Accessoires" && "👜"}
+                    {item === "Téléphones" && "📱"}
+                    {item === "Chaussures" && "👟"}
+                    {item === "Alimentation" && "🍴"}
+                    {item === "Sport" && "⚽"}
+                    {item === "Autre" && "📦"}
+                  </span>
+
+                  {item}
+
+                </button>
+              ))}
 
             </div>
 
           </div>
+
         </div>
+
       </header>
 
       {/* =========================================================
           HERO
       ========================================================= */}
+
       <section className="bg-black text-white">
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16 md:py-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
 
           <div className="max-w-4xl">
 
-            <div className="inline-block bg-yellow-400 text-black px-4 py-2 rounded-full font-black text-sm mb-5">
+            <div className="
+              inline-flex
+              items-center
+              gap-2
+              bg-yellow-400
+              text-black
+              px-4
+              py-2
+              rounded-full
+              font-black
+              text-xs
+              md:text-sm
+              mb-6
+            ">
               🇨🇮 SHOPPING EN CÔTE D'IVOIRE
             </div>
 
-            <h1 className="text-4xl md:text-6xl font-black leading-tight">
-              Bienvenue sur
+            <h1 className="
+              text-4xl
+              sm:text-5xl
+              md:text-6xl
+              lg:text-7xl
+              font-black
+              leading-[0.98]
+              tracking-tight
+            ">
+              Achète.
               <br />
 
               <span className="text-yellow-400">
-                Ivoire Shop
+                Vends.
+              </span>
+
+              <br />
+
+              Grandis avec
+              <br />
+
+              <span className="text-white">
+                Ivoire Shop.
               </span>
             </h1>
 
-            <p className="text-gray-300 text-lg md:text-xl mt-6 leading-relaxed max-w-3xl">
+            <p className="
+              text-gray-300
+              text-base
+              md:text-xl
+              mt-7
+              leading-relaxed
+              max-w-3xl
+            ">
               Découvre les produits proposés par nos vendeurs,
               commande facilement et fais-toi livrer partout en
               Côte d'Ivoire.
             </p>
 
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-9 flex flex-wrap gap-3">
 
               <button
                 onClick={() =>
@@ -736,12 +1024,15 @@ export default function Home() {
                 className="
                   bg-yellow-400
                   text-black
-                  px-7
+                  px-6
+                  md:px-7
                   py-4
                   rounded-xl
                   font-black
                   hover:bg-yellow-300
-                  hover:scale-105
+                  hover:-translate-y-1
+                  shadow-xl
+                  shadow-yellow-400/10
                   transition
                 "
               >
@@ -749,151 +1040,70 @@ export default function Home() {
               </button>
 
               <a
-                href="/suivi"
-                className="
-                  group
-                  bg-white
-                  text-black
-                  px-7
-                  py-4
-                  rounded-xl
-                  font-black
-                  shadow-xl
-                  hover:bg-yellow-400
-                  hover:scale-105
-                  transition-all
-                  flex
-                  items-center
-                  gap-2
-                "
-              >
-                <span className="group-hover:animate-bounce">
-                  📦
-                </span>
-
-                <span>
-                  Suivre ma commande
-                </span>
-              </a>
-
-              {/* =================================================
-                  DEVENIR VENDEUR
-                  MODIFICATION IMPORTANTE
-              ================================================= */}
-              <a
                 href="/become-seller"
                 className="
-                  border-2
-                  border-yellow-400
-                  bg-yellow-400
+                  bg-white
                   text-black
-                  px-7
+                  px-6
+                  md:px-7
                   py-4
                   rounded-xl
                   font-black
-                  shadow-lg
-                  shadow-yellow-400/20
-                  hover:bg-yellow-300
-                  hover:border-yellow-300
-                  hover:scale-105
-                  transition-all
+                  hover:bg-yellow-400
+                  hover:-translate-y-1
+                  transition
                   flex
                   items-center
-                  justify-center
                   gap-2
                 "
               >
-                <span className="text-xl">
-                  🏪
-                </span>
+                🏪 Devenir vendeur
+              </a>
 
-                <span>
-                  Devenir vendeur
-                </span>
+              <a
+                href="/suivi"
+                className="
+                  border-2
+                  border-white/30
+                  text-white
+                  px-6
+                  md:px-7
+                  py-4
+                  rounded-xl
+                  font-black
+                  hover:border-yellow-400
+                  hover:text-yellow-400
+                  transition
+                  flex
+                  items-center
+                  gap-2
+                "
+              >
+                📦 Suivre ma commande
               </a>
 
             </div>
 
           </div>
-        </div>
-      </section>
-
-      {/* =========================================================
-          CATEGORIES
-      ========================================================= */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-5">
-
-        <div className="flex gap-3 overflow-x-auto pb-3 pt-1">
-
-          {categories.map((item) => (
-            <button
-              key={item}
-              onClick={() => setCategory(item)}
-              className={`
-                relative
-                flex-shrink-0
-                whitespace-nowrap
-                px-6
-                py-3.5
-                rounded-2xl
-                font-bold
-                text-sm
-                border
-                transition-all
-                duration-300
-                ease-out
-                ${
-                  category === item
-                    ? "bg-black text-white border-black shadow-lg shadow-black/20 scale-[1.02]"
-                    : "bg-white text-gray-700 border-gray-200 shadow-sm hover:border-gray-400 hover:shadow-md hover:-translate-y-0.5 hover:text-black"
-                }
-              `}
-            >
-              <span className="flex items-center gap-2">
-
-                <span className="text-base">
-
-                  {item === "Toutes" && "✨"}
-                  {item === "Électronique" && "⚡"}
-                  {item === "Mode" && "👕"}
-                  {item === "Beauté" && "💄"}
-                  {item === "Maison" && "🏠"}
-                  {item === "Accessoires" && "👜"}
-                  {item === "Téléphones" && "📱"}
-                  {item === "Chaussures" && "👟"}
-                  {item === "Alimentation" && "🍴"}
-                  {item === "Sport" && "⚽"}
-                  {item === "Autre" && "📦"}
-
-                </span>
-
-                <span>{item}</span>
-
-              </span>
-
-              {category === item && (
-                <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-6 h-1 bg-yellow-400 rounded-full" />
-              )}
-
-            </button>
-          ))}
 
         </div>
+
       </section>
 
       {/* =========================================================
           PRODUITS POPULAIRES
       ========================================================= */}
+
       {!loading &&
         !search &&
         category === "Toutes" &&
         popularProducts.length > 0 && (
 
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-8">
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12">
 
           <div className="mb-6">
 
-            <p className="text-yellow-600 font-black">
+            <p className="text-yellow-600 font-black text-sm">
               LES PLUS RECHERCHÉS
             </p>
 
@@ -903,7 +1113,13 @@ export default function Home() {
 
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="
+            grid
+            grid-cols-1
+            sm:grid-cols-2
+            lg:grid-cols-4
+            gap-6
+          ">
 
             {popularProducts
               .slice(0, 4)
@@ -936,16 +1152,25 @@ export default function Home() {
       {/* =========================================================
           PRODUITS
       ========================================================= */}
+
       <section
         id="produits"
-        className="max-w-7xl mx-auto px-4 sm:px-6 py-12"
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14"
       >
 
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-7">
+        <div className="
+          flex
+          flex-col
+          sm:flex-row
+          sm:items-end
+          justify-between
+          gap-3
+          mb-7
+        ">
 
           <div>
 
-            <p className="text-yellow-600 font-black">
+            <p className="text-yellow-600 font-black text-sm">
               NOS PRODUITS
             </p>
 
@@ -959,18 +1184,24 @@ export default function Home() {
 
           </div>
 
-          <p className="text-gray-500">
-
+          <p className="text-gray-500 font-medium">
             {filteredProducts.length} produit
             {filteredProducts.length > 1 ? "s" : ""}
-
           </p>
 
         </div>
 
         {databaseError && (
 
-          <div className="bg-red-50 border-2 border-red-200 text-red-800 rounded-2xl p-5 mb-7">
+          <div className="
+            bg-red-50
+            border-2
+            border-red-200
+            text-red-800
+            rounded-2xl
+            p-5
+            mb-7
+          ">
 
             <p className="font-black">
               ⚠️ Impossible de charger les produits
@@ -982,7 +1213,17 @@ export default function Home() {
 
             <button
               onClick={loadProducts}
-              className="mt-4 bg-black text-white px-5 py-3 rounded-xl font-bold"
+              className="
+                mt-4
+                bg-black
+                text-white
+                px-5
+                py-3
+                rounded-xl
+                font-bold
+                hover:bg-gray-800
+                transition
+              "
             >
               Réessayer
             </button>
@@ -992,7 +1233,13 @@ export default function Home() {
 
         {loading && (
 
-          <div className="bg-white rounded-3xl p-16 text-center shadow-sm">
+          <div className="
+            bg-white
+            rounded-3xl
+            p-16
+            text-center
+            shadow-sm
+          ">
 
             <div className="text-6xl mb-5">
               ⏳
@@ -1013,7 +1260,13 @@ export default function Home() {
           !databaseError &&
           filteredProducts.length === 0 && (
 
-          <div className="bg-white rounded-3xl p-16 text-center shadow-sm">
+          <div className="
+            bg-white
+            rounded-3xl
+            p-16
+            text-center
+            shadow-sm
+          ">
 
             <div className="text-6xl">
               🔎
@@ -1054,7 +1307,13 @@ export default function Home() {
           !databaseError &&
           filteredProducts.length > 0 && (
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="
+            grid
+            grid-cols-1
+            sm:grid-cols-2
+            lg:grid-cols-3
+            gap-6
+          ">
 
             {filteredProducts.map((product) => (
 
@@ -1085,11 +1344,26 @@ export default function Home() {
       {/* =========================================================
           AVANTAGES
       ========================================================= */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-          <div className="bg-white rounded-2xl p-5 shadow-sm hover:shadow-lg transition">
+        <div className="
+          grid
+          grid-cols-1
+          sm:grid-cols-3
+          gap-4
+        ">
+
+          <div className="
+            bg-white
+            rounded-2xl
+            p-6
+            shadow-sm
+            border
+            border-gray-100
+            hover:shadow-lg
+            transition
+          ">
 
             <div className="text-3xl">
               🚚
@@ -1105,7 +1379,16 @@ export default function Home() {
 
           </div>
 
-          <div className="bg-white rounded-2xl p-5 shadow-sm hover:shadow-lg transition">
+          <div className="
+            bg-white
+            rounded-2xl
+            p-6
+            shadow-sm
+            border
+            border-gray-100
+            hover:shadow-lg
+            transition
+          ">
 
             <div className="text-3xl">
               🔒
@@ -1121,7 +1404,16 @@ export default function Home() {
 
           </div>
 
-          <div className="bg-white rounded-2xl p-5 shadow-sm hover:shadow-lg transition">
+          <div className="
+            bg-white
+            rounded-2xl
+            p-6
+            shadow-sm
+            border
+            border-gray-100
+            hover:shadow-lg
+            transition
+          ">
 
             <div className="text-3xl">
               💬
@@ -1138,14 +1430,16 @@ export default function Home() {
           </div>
 
         </div>
+
       </section>
 
       {/* =========================================================
           SUIVI DE COMMANDE
       ========================================================= */}
+
       <section className="bg-yellow-400 text-black">
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-14">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
 
           <div className="
             bg-black
@@ -1177,7 +1471,6 @@ export default function Home() {
                 justify-center
                 text-4xl
                 md:text-5xl
-                shadow-lg
               ">
                 📦
               </div>
@@ -1223,13 +1516,7 @@ export default function Home() {
                 gap-3
               "
             >
-              <span className="text-2xl">
-                📦
-              </span>
-
-              <span>
-                SUIVRE MA COMMANDE
-              </span>
+              📦 SUIVRE MA COMMANDE
             </a>
 
           </div>
@@ -1241,11 +1528,19 @@ export default function Home() {
       {/* =========================================================
           WHATSAPP
       ========================================================= */}
+
       <section className="bg-green-600 text-white">
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
 
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="
+            flex
+            flex-col
+            md:flex-row
+            items-center
+            justify-between
+            gap-6
+          ">
 
             <div>
 
@@ -1287,19 +1582,37 @@ export default function Home() {
       {/* =========================================================
           FOOTER
       ========================================================= */}
+
       <footer className="bg-black text-white">
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
           <div className="grid md:grid-cols-4 gap-8">
 
             <div>
 
-              <h2 className="text-2xl font-black">
-                🇨🇮 Ivoire Shop
-              </h2>
+              <div className="flex items-center gap-2">
 
-              <p className="text-gray-400 mt-2">
+                <div className="
+                  w-10
+                  h-10
+                  rounded-xl
+                  bg-yellow-400
+                  text-black
+                  flex
+                  items-center
+                  justify-center
+                ">
+                  🇨🇮
+                </div>
+
+                <h2 className="text-2xl font-black">
+                  Ivoire<span className="text-yellow-400">Shop</span>
+                </h2>
+
+              </div>
+
+              <p className="text-gray-400 mt-3">
                 Ton shopping en ligne en Côte d'Ivoire.
               </p>
 
@@ -1354,6 +1667,17 @@ export default function Home() {
                   🛍️ Voir les produits
                 </a>
 
+                <a
+                  href="/become-seller"
+                  className="
+                    text-gray-400
+                    hover:text-white
+                    block
+                  "
+                >
+                  🏪 Devenir vendeur
+                </a>
+
               </div>
 
             </div>
@@ -1382,7 +1706,14 @@ export default function Home() {
 
           </div>
 
-          <div className="border-t border-gray-800 mt-8 pt-6 text-sm text-gray-500">
+          <div className="
+            border-t
+            border-gray-800
+            mt-8
+            pt-6
+            text-sm
+            text-gray-500
+          ">
 
             © {new Date().getFullYear()} Ivoire Shop.
             Tous droits réservés.
@@ -1396,6 +1727,7 @@ export default function Home() {
       {/* =========================================================
           BOUTON SUIVI FLOTTANT MOBILE
       ========================================================= */}
+
       <a
         href="/suivi"
         className="
@@ -1414,7 +1746,6 @@ export default function Home() {
           rounded-full
           font-black
           shadow-2xl
-          shadow-black/30
           border-2
           border-black
           hover:bg-yellow-300
@@ -1429,11 +1760,13 @@ export default function Home() {
         <span>
           Suivre ma commande
         </span>
+
       </a>
 
       {/* =========================================================
           WHATSAPP FLOTTANT
       ========================================================= */}
+
       <a
         href={generalWhatsApp}
         target="_blank"
@@ -1465,9 +1798,18 @@ export default function Home() {
       {/* =========================================================
           MODAL PRODUIT
       ========================================================= */}
+
       {selectedProduct && (
 
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="
+          fixed
+          inset-0
+          z-50
+          flex
+          items-center
+          justify-center
+          p-4
+        ">
 
           <div
             className="absolute inset-0 bg-black/70"
@@ -1476,7 +1818,16 @@ export default function Home() {
             }
           />
 
-          <div className="relative bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+          <div className="
+            relative
+            bg-white
+            rounded-3xl
+            w-full
+            max-w-2xl
+            max-h-[90vh]
+            overflow-y-auto
+            shadow-2xl
+          ">
 
             <button
               onClick={() =>
@@ -1510,7 +1861,15 @@ export default function Home() {
 
             ) : (
 
-              <div className="w-full h-72 bg-gray-100 flex items-center justify-center text-8xl">
+              <div className="
+                w-full
+                h-72
+                bg-gray-100
+                flex
+                items-center
+                justify-center
+                text-8xl
+              ">
                 🛍️
               </div>
 
@@ -1519,15 +1878,19 @@ export default function Home() {
             <div className="p-7">
 
               <p className="text-sm text-gray-500">
-                {selectedProduct.category ||
-                  "Produit"}
+                {selectedProduct.category || "Produit"}
               </p>
 
               <h2 className="text-3xl font-black mt-1">
                 {selectedProduct.name}
               </h2>
 
-              <p className="text-3xl font-black mt-5 text-yellow-600">
+              <p className="
+                text-3xl
+                font-black
+                mt-5
+                text-yellow-600
+              ">
                 {formatPrice(
                   Number(selectedProduct.price)
                 )}
@@ -1537,7 +1900,11 @@ export default function Home() {
                 Number(selectedProduct.old_price) >
                   Number(selectedProduct.price) && (
 
-                <p className="text-gray-400 line-through mt-1">
+                <p className="
+                  text-gray-400
+                  line-through
+                  mt-1
+                ">
                   {formatPrice(
                     Number(selectedProduct.old_price)
                   )}
@@ -1545,7 +1912,13 @@ export default function Home() {
 
               )}
 
-              <div className="mt-4 bg-gray-100 rounded-xl px-4 py-3">
+              <div className="
+                mt-4
+                bg-gray-100
+                rounded-xl
+                px-4
+                py-3
+              ">
 
                 📦 Stock disponible :{" "}
 
@@ -1557,13 +1930,22 @@ export default function Home() {
 
               {selectedProduct.description && (
 
-                <p className="text-gray-600 leading-relaxed mt-5">
+                <p className="
+                  text-gray-600
+                  leading-relaxed
+                  mt-5
+                ">
                   {selectedProduct.description}
                 </p>
 
               )}
 
-              <div className="grid sm:grid-cols-2 gap-3 mt-7">
+              <div className="
+                grid
+                sm:grid-cols-2
+                gap-3
+                mt-7
+              ">
 
                 <button
                   onClick={() => {
@@ -1616,6 +1998,7 @@ export default function Home() {
       {/* =========================================================
           PANIER
       ========================================================= */}
+
       {showCart && (
 
         <div className="fixed inset-0 z-50">
@@ -1640,7 +2023,13 @@ export default function Home() {
             flex-col
           ">
 
-            <div className="p-5 border-b flex items-center justify-between">
+            <div className="
+              p-5
+              border-b
+              flex
+              items-center
+              justify-between
+            ">
 
               <div>
 
@@ -1725,7 +2114,11 @@ export default function Home() {
                             <img
                               src={item.image}
                               alt={item.name}
-                              className="w-full h-full object-cover"
+                              className="
+                                w-full
+                                h-full
+                                object-cover
+                              "
                             />
 
                           ) : (
@@ -1757,7 +2150,12 @@ export default function Home() {
                             )}
                           </p>
 
-                          <div className="flex items-center gap-2 mt-3">
+                          <div className="
+                            flex
+                            items-center
+                            gap-2
+                            mt-3
+                          ">
 
                             <button
                               onClick={() =>
@@ -1778,7 +2176,11 @@ export default function Home() {
                               −
                             </button>
 
-                            <span className="w-8 text-center font-bold">
+                            <span className="
+                              w-8
+                              text-center
+                              font-bold
+                            ">
                               {item.quantity}
                             </span>
 
@@ -1884,9 +2286,18 @@ export default function Home() {
       {/* =========================================================
           MODAL COMMANDE
       ========================================================= */}
+
       {showOrder && (
 
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="
+          fixed
+          inset-0
+          z-50
+          flex
+          items-center
+          justify-center
+          p-4
+        ">
 
           <div
             className="absolute inset-0 bg-black/70"
@@ -1913,6 +2324,7 @@ export default function Home() {
               flex
               justify-between
               items-center
+              z-10
             ">
 
               <div>
@@ -1955,13 +2367,21 @@ export default function Home() {
                   mb-6
                 ">
 
-                  <div className="flex justify-between">
+                  <div className="
+                    flex
+                    justify-between
+                    gap-4
+                  ">
 
                     <span className="font-bold">
                       Total de la commande
                     </span>
 
-                    <span className="text-xl font-black">
+                    <span className="
+                      text-xl
+                      font-black
+                      text-right
+                    ">
                       {formatPrice(cartTotal)}
                     </span>
 
@@ -2026,7 +2446,11 @@ export default function Home() {
                       "
                     />
 
-                    <p className="text-xs text-gray-500 mt-2">
+                    <p className="
+                      text-xs
+                      text-gray-500
+                      mt-2
+                    ">
                       Obligatoire pour le paiement en ligne.
                     </p>
 
@@ -2142,7 +2566,11 @@ export default function Home() {
                       Mode de paiement
                     </label>
 
-                    <div className="grid sm:grid-cols-2 gap-3">
+                    <div className="
+                      grid
+                      sm:grid-cols-2
+                      gap-3
+                    ">
 
                       <button
                         type="button"
@@ -2293,7 +2721,11 @@ export default function Home() {
                   🎉
                 </div>
 
-                <h2 className="text-3xl font-black mt-5">
+                <h2 className="
+                  text-3xl
+                  font-black
+                  mt-5
+                ">
                   Commande confirmée !
                 </h2>
 
@@ -2314,7 +2746,11 @@ export default function Home() {
                     Numéro de commande
                   </p>
 
-                  <p className="text-2xl font-black mt-1">
+                  <p className="
+                    text-2xl
+                    font-black
+                    mt-1
+                  ">
                     {orderNumber}
                   </p>
 
@@ -2417,6 +2853,8 @@ function ProductCard({
       rounded-3xl
       overflow-hidden
       shadow-sm
+      border
+      border-gray-100
       hover:shadow-xl
       hover:-translate-y-1
       transition
@@ -2600,11 +3038,13 @@ function ProductCard({
               Number(product.rating) > 0 && (
 
               <span className="text-sm font-bold">
+
                 ⭐ {product.rating}
 
                 {product.reviews
                   ? ` (${product.reviews})`
                   : ""}
+
               </span>
 
             )}
