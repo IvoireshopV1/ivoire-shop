@@ -1,4 +1,3 @@
-
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -11,9 +10,10 @@ export async function POST(request: Request) {
       orderNumber,
       customerName,
       customerPhone,
+      userId,
+      plan,
     } = body;
 
-    // Vérification de la clé Paystack
     const secretKey = process.env.PAYSTACK_SECRET_KEY;
 
     console.log(
@@ -30,7 +30,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // Vérification de l'email
+    // ============================================
+    // EMAIL
+    // ============================================
+
     if (!email || !email.trim()) {
       return NextResponse.json(
         {
@@ -40,22 +43,154 @@ export async function POST(request: Request) {
       );
     }
 
-    // Vérification du montant
-    if (!amount || Number(amount) <= 0) {
-      return NextResponse.json(
-        {
-          error: "Montant invalide.",
-        },
-        { status: 400 }
+    // ============================================
+    // TYPE DE PAIEMENT
+    // ============================================
+
+    const isSubscription =
+      plan === "pro" ||
+      plan === "premium";
+
+    let finalAmount: number;
+    let reference: string;
+
+    // ============================================
+    // ABONNEMENT VENDEUR
+    // ============================================
+
+    if (isSubscription) {
+      if (!userId) {
+        return NextResponse.json(
+          {
+            error: "Identifiant vendeur manquant.",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (plan === "pro") {
+        finalAmount = 3000;
+      } else {
+        finalAmount = 5000;
+      }
+
+      reference = `SUB-${plan.toUpperCase()}-${Date.now()}`;
+
+      console.log(
+        "=== ABONNEMENT VENDEUR ==="
+      );
+
+      console.log("Utilisateur :", userId);
+      console.log("Formule :", plan);
+      console.log("Montant XOF :", finalAmount);
+      console.log("Référence :", reference);
+    }
+
+    // ============================================
+    // PAIEMENT COMMANDE
+    // ============================================
+
+    else {
+      if (!amount || Number(amount) <= 0) {
+        return NextResponse.json(
+          {
+            error: "Montant invalide.",
+          },
+          { status: 400 }
+        );
+      }
+
+      finalAmount = Number(amount);
+
+      reference =
+        orderNumber ||
+        `ORDER-${Date.now()}`;
+
+      console.log(
+        "=== PAIEMENT COMMANDE ==="
+      );
+
+      console.log(
+        "Montant XOF :",
+        finalAmount
+      );
+
+      console.log(
+        "Référence :",
+        reference
       );
     }
 
-    console.log("=== INITIALISATION PAYSTACK ===");
-    console.log("Email :", email);
-    console.log("Montant XOF :", amount);
-    console.log("Référence :", orderNumber);
+    // ============================================
+    // METADATA
+    // ============================================
 
-    // Appel de l'API Paystack
+    const metadata = isSubscription
+      ? {
+          type: "seller_subscription",
+          user_id: userId,
+          plan: plan,
+          plan_name:
+            plan === "pro"
+              ? "Pro"
+              : "Premium",
+          amount_xof: finalAmount,
+          customer_name:
+            customerName || "",
+          customer_phone:
+            customerPhone || "",
+        }
+      : {
+          type: "order",
+          order_number: reference,
+          customer_name:
+            customerName || "",
+          customer_phone:
+            customerPhone || "",
+        };
+
+    // ============================================
+    // INITIALISATION PAYSTACK
+    // ============================================
+
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      "http://localhost:3000";
+
+    const paystackBody: any = {
+      email: email.trim(),
+
+      // XOF × 100
+      amount:
+        Math.round(finalAmount) * 100,
+
+      currency: "XOF",
+
+      reference,
+
+      metadata,
+    };
+
+    // Callback uniquement pour les abonnements
+    if (isSubscription) {
+      paystackBody.callback_url =
+        `${siteUrl}/seller/subscription/callback`;
+    }
+
+    console.log(
+      "=== INITIALISATION PAYSTACK ==="
+    );
+
+    console.log("Email :", email);
+    console.log(
+      "Montant XOF :",
+      finalAmount
+    );
+    console.log(
+      "Référence :",
+      reference
+    );
+
     const response = await fetch(
       "https://api.paystack.co/transaction/initialize",
       {
@@ -66,29 +201,24 @@ export async function POST(request: Request) {
           "Content-Type": "application/json",
         },
 
-        body: JSON.stringify({
-          email: email.trim(),
-
-          // Paystack demande x100 pour le XOF
-          amount: Math.round(Number(amount) * 100),
-
-          currency: "XOF",
-
-          reference: orderNumber,
-
-          metadata: {
-            order_number: orderNumber,
-            customer_name: customerName,
-            customer_phone: customerPhone,
-          },
-        }),
+        body: JSON.stringify(
+          paystackBody
+        ),
       }
     );
 
-    const responseText = await response.text();
+    const responseText =
+      await response.text();
 
-    console.log("Paystack HTTP :", response.status);
-    console.log("Paystack réponse :", responseText);
+    console.log(
+      "Paystack HTTP :",
+      response.status
+    );
+
+    console.log(
+      "Paystack réponse :",
+      responseText
+    );
 
     let data: any;
 
@@ -104,9 +234,18 @@ export async function POST(request: Request) {
       );
     }
 
-    // Paystack a refusé la transaction
-    if (!response.ok || !data.status) {
-      console.error("Erreur Paystack :", data);
+    // ============================================
+    // ERREUR PAYSTACK
+    // ============================================
+
+    if (
+      !response.ok ||
+      !data.status
+    ) {
+      console.error(
+        "Erreur Paystack :",
+        data
+      );
 
       return NextResponse.json(
         {
@@ -115,13 +254,19 @@ export async function POST(request: Request) {
             "Paystack refuse l'initialisation du paiement.",
         },
         {
-          status: response.status || 400,
+          status:
+            response.status || 400,
         }
       );
     }
 
-    // Vérification du lien de paiement
-    if (!data.data?.authorization_url) {
+    // ============================================
+    // LIEN DE PAIEMENT
+    // ============================================
+
+    if (
+      !data.data?.authorization_url
+    ) {
       return NextResponse.json(
         {
           error:
@@ -131,7 +276,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // Tout est OK
+    // ============================================
+    // SUCCÈS
+    // ============================================
+
     return NextResponse.json({
       authorization_url:
         data.data.authorization_url,
@@ -141,6 +289,18 @@ export async function POST(request: Request) {
 
       reference:
         data.data.reference,
+
+      type: isSubscription
+        ? "seller_subscription"
+        : "order",
+
+      plan:
+        isSubscription
+          ? plan
+          : null,
+
+      amount:
+        finalAmount,
     });
   } catch (error) {
     console.error(
@@ -157,4 +317,3 @@ export async function POST(request: Request) {
     );
   }
 }
-
